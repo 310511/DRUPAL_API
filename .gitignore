@@ -1,4 +1,5 @@
 /vendor/
-/web/sites/*/files
+/web/core/
+/web/modules/contrib/
+/web/sites/*/files/
 /web/sites/*/settings.php
-/web/sites/*/services.yml
