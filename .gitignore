@@ -1,0 +1,4 @@
+/vendor/
+/web/sites/*/files
+/web/sites/*/settings.php
+/web/sites/*/services.yml
