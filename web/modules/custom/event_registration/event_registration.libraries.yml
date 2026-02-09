@@ -1,0 +1,5 @@
+form_styles:
+  version: 1.x
+  css:
+    theme:
+      css/event-registration-form.css: {}

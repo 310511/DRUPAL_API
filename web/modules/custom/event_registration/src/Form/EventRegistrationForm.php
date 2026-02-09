@@ -39,6 +39,13 @@ class EventRegistrationForm extends FormBase {
     $connection = Database::getConnection();
     $today = date('Y-m-d');
 
+    $form['#attached']['library'][] = 'event_registration/form_styles';
+    $form['#attributes']['class'][] = 'event-registration-form';
+
+    $form['wrap_start'] = [
+      '#markup' => '<div class="event-registration-form-wrap"><h2 class="er-heading">Event Registration</h2><p class="er-subheading">Fill in your details and pick an event to confirm your seat.</p><div class="er-grid">',
+    ];
+
     // Check if registration is open
     $active = $connection->select('event_config', 'e')
       ->condition('reg_start', $today, '<=')
@@ -61,24 +68,39 @@ class EventRegistrationForm extends FormBase {
       '#type' => 'textfield',
       '#title' => $this->t('Full Name'),
       '#required' => TRUE,
+      '#attributes' => [
+        'placeholder' => $this->t('e.g. Alex Johnson'),
+      ],
+      '#wrapper_attributes' => [
+        'class' => ['er-span-2'],
+      ],
     ];
 
     $form['email'] = [
       '#type' => 'email',
       '#title' => $this->t('Email Address'),
       '#required' => TRUE,
+      '#attributes' => [
+        'placeholder' => $this->t('e.g. alex@example.com'),
+      ],
     ];
 
     $form['college'] = [
       '#type' => 'textfield',
       '#title' => $this->t('College Name'),
       '#required' => TRUE,
+      '#attributes' => [
+        'placeholder' => $this->t('e.g. VIT Chennai'),
+      ],
     ];
 
     $form['department'] = [
       '#type' => 'textfield',
       '#title' => $this->t('Department'),
       '#required' => TRUE,
+      '#attributes' => [
+        'placeholder' => $this->t('e.g. CSE'),
+      ],
     ];
 
     /* ---------- CATEGORY ---------- */
@@ -99,6 +121,7 @@ class EventRegistrationForm extends FormBase {
       '#title' => $this->t('Event Category'),
       '#options' => $category_options,
       '#required' => TRUE,
+      '#description' => $this->t('Choose a category to load available dates.'),
       '#ajax' => [
         'callback' => '::loadEventDates',
         'wrapper' => 'event-date-wrapper',
@@ -110,6 +133,9 @@ class EventRegistrationForm extends FormBase {
     $form['event_date_wrapper'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'event-date-wrapper'],
+      '#wrapper_attributes' => [
+        'class' => ['er-span-2'],
+      ],
     ];
 
     $category = $form_state->getValue('category');
@@ -141,6 +167,7 @@ class EventRegistrationForm extends FormBase {
       '#title' => $this->t('Event Date'),
       '#options' => $date_options,
       '#required' => TRUE,
+      '#description' => $this->t('Pick a date to load matching events.'),
       '#ajax' => [
         'callback' => '::loadEventNames',
         'wrapper' => 'event-name-wrapper',
@@ -152,6 +179,9 @@ class EventRegistrationForm extends FormBase {
     $form['event_name_wrapper'] = [
       '#type' => 'container',
       '#attributes' => ['id' => 'event-name-wrapper'],
+      '#wrapper_attributes' => [
+        'class' => ['er-span-2'],
+      ],
     ];
 
     $date = $form_state->getValue('event_date');
@@ -190,11 +220,19 @@ class EventRegistrationForm extends FormBase {
       '#title' => $this->t('Event Name'),
       '#options' => $event_options,
       '#required' => TRUE,
+      '#description' => $this->t('Select the exact event to register.'),
     ];
 
     $form['submit'] = [
       '#type' => 'submit',
       '#value' => $this->t('Register'),
+      '#wrapper_attributes' => [
+        'class' => ['er-span-2'],
+      ],
+    ];
+
+    $form['wrap_end'] = [
+      '#markup' => '</div></div>',
     ];
 
     return $form;
@@ -279,7 +317,6 @@ class EventRegistrationForm extends FormBase {
   /* ================= SUBMIT ================= */
 
   public function submitForm(array &$form, FormStateInterface $form_state) {
-
     $this->storage->saveRegistration([
       'full_name' => $form_state->getValue('full_name'),
       'email' => $form_state->getValue('email'),
