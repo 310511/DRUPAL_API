@@ -115,8 +115,25 @@ class EventRegistrationForm extends FormBase {
     $category = $form_state->getValue('category');
     $date_options = ['' => '- Select -'];
 
-    foreach ($this->getEventDateOptions($category) as $d) {
-      $date_options[$d] = $d;
+    // If category is selected, get filtered dates
+    if (!empty($category)) {
+      foreach ($this->getEventDateOptions($category) as $d) {
+        $date_options[$d] = $d;
+      }
+    } else {
+      // Show all available dates when no category is selected
+      $all_dates = Database::getConnection()
+        ->select('event_config', 'e')
+        ->fields('e', ['event_date'])
+        ->condition('reg_start', date('Y-m-d'), '<=')
+        ->condition('reg_end', date('Y-m-d'), '>=')
+        ->distinct()
+        ->execute()
+        ->fetchCol();
+      
+      foreach ($all_dates as $d) {
+        $date_options[$d] = $d;
+      }
     }
 
     $form['event_date_wrapper']['event_date'] = [
@@ -138,7 +155,35 @@ class EventRegistrationForm extends FormBase {
     ];
 
     $date = $form_state->getValue('event_date');
-    $event_options = ['' => '- Select -'] + $this->getEventNameOptions($category, $date);
+    $event_options = ['' => '- Select -'];
+
+    // If both category and date are selected, get filtered events
+    if (!empty($category) && !empty($date)) {
+      $event_options = ['' => '- Select -'] + $this->getEventNameOptions($category, $date);
+    } elseif (!empty($date)) {
+      // If only date is selected, show all events for that date
+      $events_by_date = Database::getConnection()
+        ->select('event_config', 'e')
+        ->fields('e', ['id', 'event_name'])
+        ->condition('event_date', $date)
+        ->condition('reg_start', date('Y-m-d'), '<=')
+        ->condition('reg_end', date('Y-m-d'), '>=')
+        ->execute()
+        ->fetchAllKeyed();
+      
+      $event_options = ['' => '- Select -'] + $events_by_date;
+    } else {
+      // Show all available events when no filters are applied
+      $all_events = Database::getConnection()
+        ->select('event_config', 'e')
+        ->fields('e', ['id', 'event_name'])
+        ->condition('reg_start', date('Y-m-d'), '<=')
+        ->condition('reg_end', date('Y-m-d'), '>=')
+        ->execute()
+        ->fetchAllKeyed();
+      
+      $event_options = ['' => '- Select -'] + $all_events;
+    }
 
     $form['event_name_wrapper']['event_config_id'] = [
       '#type' => 'select',
@@ -173,8 +218,14 @@ class EventRegistrationForm extends FormBase {
     }
 
     $today = date('Y-m-d');
+    
+    // Debug: Log the query parameters
+    \Drupal::logger('event_registration')->notice('Getting dates for category: @category, today: @today', [
+      '@category' => $category,
+      '@today' => $today
+    ]);
 
-    return Database::getConnection()
+    $dates = Database::getConnection()
       ->select('event_config', 'e')
       ->fields('e', ['event_date'])
       ->condition('category', $category)
@@ -182,6 +233,11 @@ class EventRegistrationForm extends FormBase {
       ->condition('reg_end', $today, '>=')
       ->execute()
       ->fetchCol();
+    
+    // Debug: Log the results
+    \Drupal::logger('event_registration')->notice('Found dates: @dates', ['@dates' => implode(', ', $dates)]);
+    
+    return $dates;
   }
 
   private function getEventNameOptions($category, $date): array {
@@ -209,7 +265,7 @@ class EventRegistrationForm extends FormBase {
       );
     }
 
-    if ($this->storage->registrationExists(
+    if ($this->storage->checkDuplicate(
       $form_state->getValue('email'),
       $form_state->getValue('event_config_id')
     )) {
@@ -235,19 +291,20 @@ class EventRegistrationForm extends FormBase {
 
     $langcode = $this->currentUser()->getPreferredLangcode();
 
-    $this->mailer->sendUserMail(
-      $form_state->getValue('email'),
-      ['body' => 'Registration successful'],
-      $langcode
-    );
+    // Comment out emails for local development
+    // $this->mailer->sendUserMail(
+    //   $form_state->getValue('email'),
+    //   ['body' => 'Registration successful'],
+    //   $langcode
+    // );
 
-    $this->mailer->sendAdminMail(
-      ['body' => 'New registration received'],
-      $langcode
-    );
+    // $this->mailer->sendAdminMail(
+    //   ['body' => 'New registration received'],
+    //   $langcode
+    // );
 
     $this->messenger()->addStatus(
-      $this->t('Registration successful. Confirmation email sent.')
+      $this->t('Registration successful!')
     );
   }
 
